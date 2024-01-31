@@ -1,5 +1,5 @@
 import sqlite3
-
+from datetime import datetime
 import streamlit as st
 from pydantic import BaseModel
 import streamlit_pydantic as sp
@@ -13,7 +13,10 @@ cur.execute(
         id INTEGER PRIMARY KEY,
         name TEXT,
         description TEXT,
-        is_done BOOLEAN
+        state TEXT,
+        created_at DATETIME,
+        created_by TEXT,
+        category TEXT
     )
     """
 )
@@ -21,25 +24,33 @@ cur.execute(
 class Task(BaseModel):
     name: str
     description: str
-    is_done: bool
+    state: str
+    created_by: str
+    category: str
 
-def toggle_is_done(is_done, row):
+def toggle_state(state, row):
+    con = sqlite3.connect("todoapp.sqlite", isolation_level=None)
+    cur = con.cursor()
     cur.execute(
         """
-        UPDATE tasks SET is_done = ? WHERE id = ?
+        UPDATE tasks SET state = ? WHERE id = ?
         """,
-        (is_done, row[0]),
+        (state, row[0]),
     )
+
 
 def main():
     st.title("Todo App")
     data = sp.pydantic_form(key="task_form", model=Task)
     if data:
+        # Automatically set the current timestamp for created_at
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cur.execute(
             """
-            INSERT INTO tasks (name, description, is_done) VALUES (?, ?, ?)
+            INSERT INTO tasks (name, description, state, created_at, created_by, category)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (data.name, data.description, data.is_done),
+            (data.name, data.description, data.state, current_time, data.category, data.created_by),
         )
 
     data = cur.execute(
@@ -48,27 +59,22 @@ def main():
         """
     ).fetchall()
 
-    # HINT: how to implement a Edit button?
-    # if st.query_params.get('id') == "123":
-    #     st.write("Hello 123")
-    #     st.markdown(
-    #         f'<a target="_self" href="/" style="display: inline-block; padding: 6px 10px; background-color: #4CAF50; color: white; text-align: center; text-decoration: none; font-size: 12px; border-radius: 4px;">Back</a>',
-    #         unsafe_allow_html=True,
-    #     )
-    #     return
-
-    cols = st.columns(3)
+    cols = st.columns(6)
     cols[0].write("Done?")
     cols[1].write("Name")
     cols[2].write("Description")
+    cols[3].write("State")
+    cols[4].write("Created At")
+    cols[5].write("Category")
+
     for row in data:
-        cols = st.columns(3)
-        cols[0].checkbox('is_done', row[3], label_visibility='hidden', key=row[0], on_change=toggle_is_done, args=(not row[3], row))
+        cols = st.columns(6)
+        # Use 'state' instead of 'is_done' in the checkbox creation
+        cols[0].checkbox('state', row[3] == 'done', label_visibility='hidden', key=row[0], on_change=toggle_state, args=('done' if row[3] != 'done' else 'in-progress', row))
         cols[1].write(row[1])
         cols[2].write(row[2])
-        # cols[2].markdown(
-        #     f'<a target="_self" href="/?id=123" style="display: inline-block; padding: 6px 10px; background-color: #4CAF50; color: white; text-align: center; text-decoration: none; font-size: 12px; border-radius: 4px;">Action Text on Button</a>',
-        #     unsafe_allow_html=True,
-        # )
+        cols[3].write(row[3])
+        cols[4].write(row[4])
+        cols[5].write(row[5])
 
 main()
