@@ -1,6 +1,6 @@
 # TECHIN 510 Lab 3
 ## Overview
-Data storage and retrieval using Python.
+This is a todo list app that using Python for Data storage and retrieval.It has already been deployed on Azure: https://510todoapp.azurewebsites.net/
 
 ## how to run
 first, use command to install the package list in reqirement
